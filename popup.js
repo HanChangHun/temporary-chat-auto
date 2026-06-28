@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  // NOTE: keep this in sync with DEFAULT_OPTIONS in content.js (the popup and
+  // the content script do not share a module).
   const DEFAULT_OPTIONS = {
     enabled: true,
     redirectNewChats: true,
@@ -19,7 +21,8 @@
 
   const loadOptions = () => {
     chrome.storage.sync.get(DEFAULT_OPTIONS, (items) => {
-      enabled.checked = Boolean(items.enabled);
+      const values = chrome.runtime.lastError ? DEFAULT_OPTIONS : items;
+      enabled.checked = Boolean(values.enabled);
     });
   };
 

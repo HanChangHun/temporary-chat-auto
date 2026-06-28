@@ -3,6 +3,8 @@
 
   const INLINE_TOGGLE_ID = "temporary-chat-auto-inline-toggle";
   const TEMPORARY_PARAM = "temporary-chat";
+  // NOTE: keep this in sync with DEFAULT_OPTIONS in popup.js (the content
+  // script and the popup do not share a module).
   const DEFAULT_OPTIONS = {
     enabled: true,
     redirectNewChats: true,
@@ -27,10 +29,17 @@
     "一時チャット"
   ];
 
+  // Leading-edge throttle for the heavy apply work; URL poll cadence for SPA
+  // navigations that do not emit a navigation event.
+  const APPLY_THROTTLE_MS = 250;
+  const URL_POLL_INTERVAL_MS = 500;
+
   let options = { ...DEFAULT_OPTIONS };
   let lastHref = location.href;
   let lastApplyAt = 0;
   let inlineToggleSyncId = 0;
+  let applyScheduled = false;
+  let havePatchedAnchors = false;
 
   const log = (...args) => {
     if (options.debug) {
@@ -45,9 +54,15 @@
         return;
       }
 
-      chrome.storage.sync.get(defaults, resolve);
+      chrome.storage.sync.get(defaults, (items) => {
+        resolve(chrome.runtime?.lastError ? defaults : items);
+      });
     });
 
+  // The popup only exposes the master `enabled` switch; the other three
+  // behaviors are always-on internals. Force them true here so a stale `false`
+  // left in storage by an older multi-toggle build can never silently disable
+  // a behavior with no UI to turn it back on.
   const normalizeOptions = (items) => ({
     ...DEFAULT_OPTIONS,
     ...items,
@@ -65,8 +80,13 @@
   const isSupportedOrigin = (url) =>
     url.origin === "https://chatgpt.com" || url.origin === "https://chat.openai.com";
 
-  const hasTemporaryParam = (url) =>
-    url.searchParams.get(TEMPORARY_PARAM) === "true";
+  // Treat the param as present unless it is explicitly disabled, so a value
+  // ChatGPT might normalize differently (e.g. "1", or a bare key) does not
+  // trigger an endless re-redirect to "...=true".
+  const hasTemporaryParam = (url) => {
+    const value = url.searchParams.get(TEMPORARY_PARAM);
+    return value !== null && value !== "false";
+  };
 
   const isConversationOrUtilityPath = (pathname) => {
     const utilityPrefixes = [
@@ -135,11 +155,16 @@
     }
 
     const rect = element.getBoundingClientRect();
+
+    // Cheap geometry test first; only pay for getComputedStyle (forces a style
+    // recalc) on elements that actually have a box.
+    if (rect.width <= 0 || rect.height <= 0) {
+      return false;
+    }
+
     const style = getComputedStyle(element);
 
     return (
-      rect.width > 0 &&
-      rect.height > 0 &&
       style.visibility !== "hidden" &&
       style.display !== "none" &&
       Number(style.opacity || "1") > 0
@@ -264,60 +289,89 @@
     return container;
   };
 
-  const findTemporaryChatMarker = () => {
-    const headingCandidates = Array.from(document.querySelectorAll("h1, h2, h3, [role='heading']"))
-      .filter((element) => !element.closest(`#${INLINE_TOGGLE_ID}`))
-      .filter((element) => isVisible(element))
-      .filter((element) => {
-        const text = getElementText(element).replace(/\s+/g, " ").trim().toLowerCase();
-        return TEMPORARY_CHAT_TEXT.some((needle) => text === needle);
-      });
+  const anchorMatchesTemporary = (element) =>
+    !!element &&
+    element.isConnected &&
+    !element.closest(`#${INLINE_TOGGLE_ID}`) &&
+    isVisible(element) &&
+    containsAny(getElementText(element), TEMPORARY_CHAT_TEXT);
 
-    const labelCandidates = Array.from(document.querySelectorAll("[aria-label], [title]"))
-      .filter((element) => !element.closest(`#${INLINE_TOGGLE_ID}`))
-      .filter((element) => isVisible(element))
-      .filter((element) => {
-        const text = getElementText(element).replace(/\s+/g, " ").trim().toLowerCase();
-        return TEMPORARY_CHAT_TEXT.some((needle) => text === needle);
-      });
+  let cachedAnchor = null;
 
-    return [...headingCandidates, ...labelCandidates]
-      .map((element) => ({
-        element,
-        rect: element.getBoundingClientRect()
-      }))
-      .filter(({ rect }) => rect.top >= 0 && rect.bottom <= window.innerHeight)
-      .sort((a, b) => {
-        const aHeading = a.element.matches("h1, h2, h3, [role='heading']") ? 0 : 1;
-        const bHeading = b.element.matches("h1, h2, h3, [role='heading']") ? 0 : 1;
+  // Anchor the inline toggle to ChatGPT's own Temporary Chat control (the
+  // dashed-bubble button in the top bar), not to the big centered heading.
+  // That control is present on both the new-chat home and the temporary-chat
+  // screen, and uses a stable spot, so the toggle stops jumping around.
+  const findTemporaryChatAnchor = () => {
+    if (anchorMatchesTemporary(cachedAnchor)) {
+      return cachedAnchor;
+    }
 
-        if (aHeading !== bHeading) {
-          return aHeading - bHeading;
-        }
+    const candidates = Array.from(
+      document.querySelectorAll("button, [role='button'], [role='switch'], a[href]")
+    ).filter(anchorMatchesTemporary);
 
-        return Math.abs(a.rect.top - (window.innerHeight * 0.3)) - Math.abs(b.rect.top - (window.innerHeight * 0.3));
-      })[0]?.element || null;
+    cachedAnchor =
+      candidates
+        .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+        .sort(
+          (a, b) =>
+            a.rect.top - b.rect.top ||
+            a.rect.width * a.rect.height - b.rect.width * b.rect.height
+        )[0]?.element || null;
+
+    return cachedAnchor;
   };
 
   const syncInlineToggle = () => {
     const container = createInlineToggle();
     const button = container.querySelector("button");
-    const marker = findTemporaryChatMarker();
+    const anchor = findTemporaryChatAnchor();
 
     container.classList.toggle("is-enabled", options.enabled);
     button.setAttribute("aria-pressed", String(options.enabled));
     button.title = options.enabled ? "자동 임시 채팅 켜짐" : "자동 임시 채팅 꺼짐";
 
-    if (!marker) {
-      container.hidden = true;
+    const toggleWidth = container.offsetWidth || 74;
+    const toggleHeight = container.offsetHeight || 28;
+
+    if (!anchor) {
+      // No ChatGPT control found. Still keep the toggle visible (top-right) on
+      // new-chat screens so it never silently disappears; hide it elsewhere.
+      let onNewChatPage = false;
+      try {
+        onNewChatPage = isLikelyNewChatPath(new URL(location.href));
+      } catch {
+        onNewChatPage = false;
+      }
+
+      if (!onNewChatPage) {
+        container.hidden = true;
+        return;
+      }
+
+      container.hidden = false;
+      container.style.top = "12px";
+      container.style.left = "";
+      container.style.right = "72px";
       return;
     }
 
     container.hidden = false;
-    const markerRect = marker.getBoundingClientRect();
-    const toggleWidth = container.offsetWidth || 74;
-    const left = Math.min(markerRect.right + 12, window.innerWidth - toggleWidth - 16);
-    const top = Math.max(16, markerRect.top + (markerRect.height - container.offsetHeight) / 2);
+    const anchorRect = anchor.getBoundingClientRect();
+    const gap = 10;
+
+    // Sit just to the left of ChatGPT's Temporary Chat button; flip to its
+    // right only when there is no room on the left.
+    let left = anchorRect.left - toggleWidth - gap;
+    if (left < 8) {
+      left = Math.min(anchorRect.right + gap, window.innerWidth - toggleWidth - 8);
+    }
+
+    const top = Math.min(
+      Math.max(8, anchorRect.top + (anchorRect.height - toggleHeight) / 2),
+      window.innerHeight - toggleHeight - 8
+    );
 
     container.style.top = `${Math.round(top)}px`;
     container.style.left = `${Math.round(left)}px`;
@@ -361,12 +415,10 @@
       return;
     }
 
-    chrome.storage.sync.set({
-      enabled,
-      redirectNewChats: true,
-      patchNewChatLinks: true,
-      clickVisibleToggle: true
-    }, afterSave);
+    // Persist only the master switch. The other flags are always-on internals
+    // (forced true in normalizeOptions), so writing them on every click would
+    // only burn the storage.sync write quota and make rapid toggling fail.
+    chrome.storage.sync.set({ enabled }, afterSave);
   };
 
   const getExplicitCheckedState = (element) => {
@@ -411,6 +463,11 @@
     );
 
     for (const control of controls) {
+      // Never treat our own inline toggle as a ChatGPT control to click.
+      if (control.closest(`#${INLINE_TOGGLE_ID}`)) {
+        continue;
+      }
+
       if (!isVisible(control)) {
         continue;
       }
@@ -418,12 +475,16 @@
       const label = [
         getElementText(control),
         control.closest("label")?.textContent,
-        control.closest("[role='menuitem'], [role='menuitemcheckbox'], li, div")?.textContent
+        control.closest("[role='menuitem'], [role='menuitemcheckbox']")?.textContent
       ]
         .filter(Boolean)
-        .join(" ");
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-      if (!containsAny(label, TEMPORARY_CHAT_TEXT)) {
+      // A real toggle's label is short; a long string means we matched a big
+      // container's text and would click the wrong control.
+      if (label.length > 80 || !containsAny(label, TEMPORARY_CHAT_TEXT)) {
         continue;
       }
 
@@ -463,14 +524,23 @@
     }
 
     anchor.href = temporaryHref;
+    havePatchedAnchors = true;
     return true;
   };
 
   const restorePatchedLinks = () => {
+    // Nothing patched yet (e.g. extension started disabled): avoid a pointless
+    // full-document query on every mutation while disabled.
+    if (!havePatchedAnchors) {
+      return;
+    }
+
     for (const anchor of document.querySelectorAll("a[data-temporary-chat-auto-original-href]")) {
       anchor.setAttribute("href", anchor.dataset.temporaryChatAutoOriginalHref);
       delete anchor.dataset.temporaryChatAutoOriginalHref;
     }
+
+    havePatchedAnchors = false;
   };
 
   const patchNewChatLinks = () => {
@@ -481,11 +551,23 @@
     let patched = 0;
 
     for (const anchor of document.querySelectorAll("a[href]")) {
-      const text = getElementText(anchor);
       const href = anchor.getAttribute("href") || "";
-      const looksLikeRootNewChat = href === "/" || href.startsWith("/?") || href.startsWith("https://chatgpt.com/?");
 
-      if ((looksLikeRootNewChat || containsAny(text, NEW_CHAT_TEXT)) && patchAnchor(anchor)) {
+      // Sidebar conversation links are the bulk of anchors on the page and can
+      // never be a new chat; skip them before the costly text read.
+      if (href.startsWith("/c/")) {
+        continue;
+      }
+
+      const looksLikeRootNewChat =
+        href === "/" ||
+        href.startsWith("/?") ||
+        href.startsWith("https://chatgpt.com/?") ||
+        href.startsWith("https://chat.openai.com/?");
+
+      // Short-circuit: only read aria-label/title/textContent when the cheap
+      // href shape did not already identify a root new-chat link.
+      if ((looksLikeRootNewChat || containsAny(getElementText(anchor), NEW_CHAT_TEXT)) && patchAnchor(anchor)) {
         patched += 1;
       }
     }
@@ -550,7 +632,7 @@
 
     const now = Date.now();
 
-    if (now - lastApplyAt < 250) {
+    if (now - lastApplyAt < APPLY_THROTTLE_MS) {
       return;
     }
 
@@ -585,12 +667,28 @@
         lastHref = location.href;
         applyTemporaryChatMode("url-change");
       }
-    }, 500);
+    }, URL_POLL_INTERVAL_MS);
+  };
+
+  // ChatGPT mutates the DOM constantly while a response streams. Coalesce a
+  // burst of mutations into a single apply per animation frame so the throttled
+  // heavy work and the layout-reading toggle sync are not re-run dozens of
+  // times per second.
+  const scheduleApply = (reason) => {
+    if (applyScheduled) {
+      return;
+    }
+
+    applyScheduled = true;
+    window.requestAnimationFrame(() => {
+      applyScheduled = false;
+      applyTemporaryChatMode(reason);
+    });
   };
 
   const watchDomChanges = () => {
     const observer = new MutationObserver(() => {
-      applyTemporaryChatMode("dom-change");
+      scheduleApply("dom-change");
     });
 
     observer.observe(document.documentElement, {
@@ -620,7 +718,7 @@
       let changed = false;
 
       for (const key of Object.keys(DEFAULT_OPTIONS)) {
-      if (changes[key]) {
+        if (changes[key]) {
           options[key] = changes[key].newValue;
           changed = true;
         }

@@ -43,7 +43,7 @@ See [PRIVACY.md](PRIVACY.md).
 
 ## Support
 
-If this extension is useful to you, you can [support development on Ko-fi](https://ko-fi.com/edgepu). Donations are optional and will never be required for the extension's core functionality.
+If this extension is useful to you, you can [support development on Ko-fi](https://ko-fi.com/edgetpu). Donations are optional and will never be required for the extension's core functionality.
 
 ## License and Branding
 

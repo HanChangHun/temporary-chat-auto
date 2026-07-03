@@ -10,7 +10,7 @@
 
 - Chrome Web Store Developer Dashboard에서 `새 항목` 또는 `New item`을 선택합니다.
 - 업로드 파일:
-  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto-0.1.6-store.zip`
+  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto-0.1.7-store.zip`
 
 ## 3. 스토어 등록정보
 

@@ -17,10 +17,18 @@
 
       <label class="switch-row">
         <span>
-          <strong data-i18n="popupAutoTitle">Auto Temporary Chat</strong>
-          <small data-i18n="popupAutoDescription">Open new ChatGPT conversations in Temporary Chat.</small>
+          <strong data-i18n="popupChatgptToggleTitle">ChatGPT &middot; Temporary Chat</strong>
+          <small data-i18n="popupChatgptToggleDescription">Open new ChatGPT conversations in Temporary Chat.</small>
         </span>
-        <input id="enabled" type="checkbox">
+        <input id="chatgptEnabled" type="checkbox">
+      </label>
+
+      <label class="switch-row">
+        <span>
+          <strong data-i18n="popupClaudeToggleTitle">Claude &middot; Incognito</strong>
+          <small data-i18n="popupClaudeToggleDescription">Open new Claude conversations in Incognito.</small>
+        </span>
+        <input id="claudeEnabled" type="checkbox">
       </label>
 
       <button id="applyNow" type="button" data-i18n="popupApplyButton">Apply to current tab</button>

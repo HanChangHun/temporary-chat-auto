@@ -14,23 +14,38 @@
   "inlineToggleAriaLabel": {
     "message": "자동 임시 채팅 전환"
   },
+  "inlineToggleAriaLabelIncognito": {
+    "message": "자동 시크릿 채팅 전환"
+  },
   "inlineToggleLabel": {
     "message": "자동"
   },
   "inlineToggleTitleOff": {
     "message": "자동 임시 채팅 꺼짐"
   },
+  "inlineToggleTitleOffIncognito": {
+    "message": "자동 시크릿 채팅 꺼짐"
+  },
   "inlineToggleTitleOn": {
     "message": "자동 임시 채팅 켜짐"
+  },
+  "inlineToggleTitleOnIncognito": {
+    "message": "자동 시크릿 채팅 켜짐"
   },
   "popupApplyButton": {
     "message": "현재 탭에 적용"
   },
-  "popupAutoDescription": {
-    "message": "새 ChatGPT 대화는 임시 채팅으로, 새 Claude 대화는 시크릿 채팅으로 엽니다."
+  "popupChatgptToggleDescription": {
+    "message": "새 ChatGPT 대화를 임시 채팅으로 엽니다."
   },
-  "popupAutoTitle": {
-    "message": "자동 임시 채팅"
+  "popupChatgptToggleTitle": {
+    "message": "ChatGPT · 임시 채팅"
+  },
+  "popupClaudeToggleDescription": {
+    "message": "새 Claude 대화를 시크릿 채팅으로 엽니다."
+  },
+  "popupClaudeToggleTitle": {
+    "message": "Claude · 시크릿 채팅"
   },
   "popupSupportLink": {
     "message": "개발 후원하기"

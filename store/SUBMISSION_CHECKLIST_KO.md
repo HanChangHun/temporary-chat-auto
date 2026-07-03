@@ -26,7 +26,7 @@ ChatGPT Temporary Chat Auto makes private chats the default: Temporary Chat for 
 
 When you open ChatGPT or Claude, or click New chat, the extension keeps each site's private-chat URL parameter in place so new chats start in Temporary Chat or Incognito mode. It works on chatgpt.com, chat.openai.com, and claude.ai.
 
-Use the popup to turn automation on or off. On the page, a compact Auto toggle can appear near each site's Temporary/Incognito chat indicator for quick control.
+Use the popup to turn automation on or off for each site independently. On the page, a compact Auto toggle can appear near each site's Temporary/Incognito chat indicator for quick control.
 
 This is an unofficial extension and is not affiliated with OpenAI or Anthropic.
 ```
@@ -59,7 +59,7 @@ Automatically open new ChatGPT and Claude chats in their private chat modes (Tem
 
 ### storage
 
-Stores the user's extension preference, specifically whether automatic Temporary Chat mode is enabled.
+Stores the user's extension preferences, specifically whether automatic private chat mode is enabled for each supported site.
 
 ### https://chatgpt.com/*
 

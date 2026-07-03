@@ -12,8 +12,8 @@ This is an unofficial extension and is not affiliated with OpenAI.
 - Opens new Claude chats on `claude.ai` with the `incognito` parameter.
 - Patches New chat links on `chatgpt.com`, `chat.openai.com`, and `claude.ai`.
 - Adds a compact in-page toggle near each site's Temporary/Incognito chat indicator.
-- Keeps the popup simple with one on/off control.
-- Stores only the user's on/off preference in Chrome sync storage.
+- Keeps the popup simple with independent on/off controls for ChatGPT and Claude.
+- Stores only the user's per-site on/off preferences in Chrome sync storage.
 
 ## Installation
 
@@ -34,7 +34,7 @@ The extension has been submitted to the Chrome Web Store and is waiting for revi
 - The extension runs only on `https://chatgpt.com/*`, `https://chat.openai.com/*`, and `https://claude.ai/*`.
 - It updates new-chat URLs and New chat links with each site's private-chat parameter (`temporary-chat=true` on ChatGPT, `incognito` on Claude).
 - If ChatGPT exposes a visible Temporary Chat toggle and it is clearly off, the extension can turn it on.
-- The popup and in-page toggle both control the same single preference.
+- The popup and in-page toggle control the same per-site preference; the ChatGPT and Claude settings are independent.
 
 ## Privacy
 

@@ -1,14 +1,21 @@
 (() => {
   "use strict";
 
-  const enabled = document.querySelector("#enabled");
   const status = document.querySelector("#status");
   const applyNow = document.querySelector("#applyNow");
+  // Checkbox element id -> storage key. ChatGPT keeps the legacy "enabled"
+  // key so existing installs preserve their preference.
+  const TOGGLES = [
+    { input: document.querySelector("#chatgptEnabled"), key: "enabled" },
+    { input: document.querySelector("#claudeEnabled"), key: "claudeEnabled" }
+  ];
   const DEFAULT_MESSAGES = {
     extensionActionTitle: "Temporary Chat Auto",
     popupApplyButton: "Apply to current tab",
-    popupAutoDescription: "Open new ChatGPT conversations in Temporary Chat and new Claude conversations in Incognito.",
-    popupAutoTitle: "Auto Temporary Chat",
+    popupChatgptToggleDescription: "Open new ChatGPT conversations in Temporary Chat.",
+    popupChatgptToggleTitle: "ChatGPT · Temporary Chat",
+    popupClaudeToggleDescription: "Open new Claude conversations in Incognito.",
+    popupClaudeToggleTitle: "Claude · Incognito",
     popupSupportLink: "Support development",
     statusApplied: "Applied",
     statusNoActiveTab: "No active tab",
@@ -41,17 +48,17 @@
   };
 
   const loadOptions = () => {
-    chrome.storage.sync.get({ enabled: true }, (items) => {
-      const value = chrome.runtime.lastError ? true : items.enabled;
-      enabled.checked = Boolean(value);
+    chrome.storage.sync.get({ enabled: true, claudeEnabled: true }, (items) => {
+      for (const toggle of TOGGLES) {
+        toggle.input.checked = Boolean(chrome.runtime.lastError ? true : items[toggle.key]);
+      }
     });
   };
 
-  const saveOption = (event) => {
-    const input = event.currentTarget;
-    chrome.storage.sync.set({ enabled: input.checked }, () => {
+  const saveOption = (toggle) => {
+    chrome.storage.sync.set({ [toggle.key]: toggle.input.checked }, () => {
       if (chrome.runtime.lastError) {
-        enabled.checked = !input.checked;
+        toggle.input.checked = !toggle.input.checked;
         setStatus(t("statusSaveFailed"));
         return;
       }
@@ -79,13 +86,21 @@
   };
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "sync" && changes.enabled) {
-      enabled.checked = Boolean(changes.enabled.newValue);
-      setStatus(t("statusSaved"));
+    if (area !== "sync") {
+      return;
+    }
+
+    for (const toggle of TOGGLES) {
+      if (changes[toggle.key]) {
+        toggle.input.checked = Boolean(changes[toggle.key].newValue);
+        setStatus(t("statusSaved"));
+      }
     }
   });
 
-  enabled.addEventListener("change", saveOption);
+  for (const toggle of TOGGLES) {
+    toggle.input.addEventListener("change", () => saveOption(toggle));
+  }
   applyNow.addEventListener("click", sendApplyMessage);
   applyMessages();
   loadOptions();

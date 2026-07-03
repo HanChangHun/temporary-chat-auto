@@ -8,9 +8,12 @@
   };
   const DEFAULT_MESSAGES = {
     inlineToggleAriaLabel: "Toggle automatic Temporary Chat",
+    inlineToggleAriaLabelIncognito: "Toggle automatic Incognito chat",
     inlineToggleLabel: "Auto",
     inlineToggleTitleOff: "Automatic Temporary Chat off",
-    inlineToggleTitleOn: "Automatic Temporary Chat on"
+    inlineToggleTitleOffIncognito: "Automatic Incognito chat off",
+    inlineToggleTitleOn: "Automatic Temporary Chat on",
+    inlineToggleTitleOnIncognito: "Automatic Incognito chat on"
   };
 
   const NEW_CHAT_TEXT = [
@@ -29,6 +32,14 @@
       param: "temporary-chat",
       paramValue: "true",
       newChatBasePath: "/",
+      // Existing installs already store the ChatGPT preference under
+      // "enabled"; keep the legacy key so upgrades preserve it.
+      storageKey: "enabled",
+      inlineMessages: {
+        ariaLabel: "inlineToggleAriaLabel",
+        titleOn: "inlineToggleTitleOn",
+        titleOff: "inlineToggleTitleOff"
+      },
       controlText: ["temporary chat", "임시 채팅", "臨時聊天", "临时聊天", "一時チャット"],
       // ChatGPT sometimes renders the temporary-chat switch already on screen;
       // clicking it is a safe fallback beyond the URL param.
@@ -66,6 +77,12 @@
       // claude.ai enables Incognito on the bare param ("?incognito=").
       paramValue: "",
       newChatBasePath: "/new",
+      storageKey: "claudeEnabled",
+      inlineMessages: {
+        ariaLabel: "inlineToggleAriaLabelIncognito",
+        titleOn: "inlineToggleTitleOnIncognito",
+        titleOff: "inlineToggleTitleOffIncognito"
+      },
       controlText: ["incognito", "시크릿"],
       clickToggle: false,
       utilityPrefixes: [
@@ -130,10 +147,23 @@
       });
     });
 
-  const normalizeOptions = (items) => ({ ...DEFAULT_OPTIONS, ...items });
+  // Each site reads and writes only its own storage key (the ChatGPT
+  // preference lives under the legacy "enabled" key), so the per-site
+  // toggles stay independent.
+  const readSiteOptions = async () => {
+    const items = await storageGet({
+      [PAGE_SITE.storageKey]: DEFAULT_OPTIONS.enabled,
+      debug: DEFAULT_OPTIONS.debug
+    });
+
+    return {
+      enabled: Boolean(items[PAGE_SITE.storageKey]),
+      debug: Boolean(items.debug)
+    };
+  };
 
   const refreshOptions = async () => {
-    options = normalizeOptions(await storageGet(DEFAULT_OPTIONS));
+    options = await readSiteOptions();
     scheduleInlineToggleSync();
     return options;
   };
@@ -437,9 +467,11 @@
       label.textContent = t("inlineToggleLabel");
     }
     container.classList.toggle("is-enabled", options.enabled);
-    button.setAttribute("aria-label", t("inlineToggleAriaLabel"));
+    button.setAttribute("aria-label", t(PAGE_SITE.inlineMessages.ariaLabel));
     button.setAttribute("aria-pressed", String(options.enabled));
-    button.title = options.enabled ? t("inlineToggleTitleOn") : t("inlineToggleTitleOff");
+    button.title = options.enabled
+      ? t(PAGE_SITE.inlineMessages.titleOn)
+      : t(PAGE_SITE.inlineMessages.titleOff);
 
     if (!anchor) {
       // No ChatGPT control found. Still keep the toggle visible (top-right) on
@@ -506,14 +538,13 @@
   };
 
   const setEnabled = (enabled) => {
-    const nextOptions = normalizeOptions({ ...options, enabled });
-    options = nextOptions;
+    options = { ...options, enabled };
     scheduleInlineToggleSync();
 
     const afterSave = () => {
       if (chrome.runtime?.lastError) {
         log("Failed to save enabled state", chrome.runtime.lastError.message);
-        options = normalizeOptions({ ...options, enabled: !enabled });
+        options = { ...options, enabled: !enabled };
         scheduleInlineToggleSync();
         return;
       }
@@ -531,9 +562,10 @@
       return;
     }
 
-    // `enabled` is the only persisted setting; writing just that key keeps the
-    // storage.sync write volume minimal so rapid toggling never hits the quota.
-    chrome.storage.sync.set({ enabled }, afterSave);
+    // The site's `enabled` flag is the only persisted setting; writing just
+    // that key keeps the storage.sync write volume minimal so rapid toggling
+    // never hits the quota.
+    chrome.storage.sync.set({ [PAGE_SITE.storageKey]: enabled }, afterSave);
   };
 
   const getExplicitCheckedState = (element) => {
@@ -821,11 +853,14 @@
 
       let changed = false;
 
-      for (const key of Object.keys(DEFAULT_OPTIONS)) {
-        if (changes[key]) {
-          options[key] = changes[key].newValue;
-          changed = true;
-        }
+      if (changes[PAGE_SITE.storageKey]) {
+        options.enabled = Boolean(changes[PAGE_SITE.storageKey].newValue ?? DEFAULT_OPTIONS.enabled);
+        changed = true;
+      }
+
+      if (changes.debug) {
+        options.debug = Boolean(changes.debug.newValue ?? DEFAULT_OPTIONS.debug);
+        changed = true;
       }
 
       if (changed) {
@@ -835,7 +870,6 @@
           return;
         }
 
-        options = normalizeOptions(options);
         scheduleInlineToggleSync();
         applyTemporaryChatMode("settings-change");
       }
@@ -843,7 +877,7 @@
   };
 
   const init = async () => {
-    options = normalizeOptions(await storageGet(DEFAULT_OPTIONS));
+    options = await readSiteOptions();
 
     document.addEventListener("click", onCapturedClick, true);
     window.addEventListener("resize", scheduleInlineToggleSync);

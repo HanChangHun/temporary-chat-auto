@@ -2,7 +2,6 @@
   "use strict";
 
   const INLINE_TOGGLE_ID = "temporary-chat-auto-inline-toggle";
-  const TEMPORARY_PARAM = "temporary-chat";
   const DEFAULT_OPTIONS = {
     enabled: true,
     debug: false
@@ -22,13 +21,76 @@
     "新しいチャット"
   ];
 
-  const TEMPORARY_CHAT_TEXT = [
-    "temporary chat",
-    "임시 채팅",
-    "臨時聊天",
-    "临时聊天",
-    "一時チャット"
+  // Per-site behavior: which query param forces the private mode, which paths
+  // count as a new chat, and which on-page control the inline toggle anchors to.
+  const SITE_CONFIGS = [
+    {
+      origins: ["https://chatgpt.com", "https://chat.openai.com"],
+      param: "temporary-chat",
+      paramValue: "true",
+      newChatBasePath: "/",
+      controlText: ["temporary chat", "임시 채팅", "臨時聊天", "临时聊天", "一時チャット"],
+      // ChatGPT sometimes renders the temporary-chat switch already on screen;
+      // clicking it is a safe fallback beyond the URL param.
+      clickToggle: true,
+      // The in-conversation Temporary Chat marker is a plain <div> (icon +
+      // label), not a button, so the interactive anchor scan cannot see it;
+      // scan this header container for it instead.
+      indicatorContainerSelector: "[data-testid='thread-header-right-actions-container']",
+      utilityPrefixes: [
+        "/api",
+        "/auth",
+        "/backend-api",
+        "/c/",
+        "/gpts",
+        "/logout",
+        "/pricing",
+        "/public-api",
+        "/search",
+        "/share/",
+        "/signin",
+        "/settings"
+      ],
+      conversationPattern: /\/c\/[0-9a-f-]{8,}/i,
+      isNewChatPath: (pathname) =>
+        pathname === "/" || pathname === "" || /^\/g\/[^/]+\/?$/.test(pathname),
+      isNewChatHref: (href) =>
+        href === "/" ||
+        href.startsWith("/?") ||
+        href.startsWith("https://chatgpt.com/?") ||
+        href.startsWith("https://chat.openai.com/?")
+    },
+    {
+      origins: ["https://claude.ai"],
+      param: "incognito",
+      // claude.ai enables Incognito on the bare param ("?incognito=").
+      paramValue: "",
+      newChatBasePath: "/new",
+      controlText: ["incognito", "시크릿"],
+      clickToggle: false,
+      utilityPrefixes: [
+        "/api",
+        "/artifacts",
+        "/chat/",
+        "/login",
+        "/magic-link",
+        "/oauth",
+        "/project",
+        "/recents",
+        "/settings",
+        "/share/"
+      ],
+      conversationPattern: /\/chat\/[0-9a-f-]{8,}/i,
+      isNewChatPath: (pathname) => pathname === "/new" || pathname === "/new/",
+      isNewChatHref: (href) =>
+        href === "/new" || href.startsWith("/new?") || href.startsWith("https://claude.ai/new")
+    }
   ];
+
+  const getSiteForUrl = (url) =>
+    SITE_CONFIGS.find((site) => site.origins.includes(url.origin)) || null;
+
+  const PAGE_SITE = getSiteForUrl(new URL(location.href));
 
   // Leading-edge throttle for the heavy apply work; URL poll cadence for SPA
   // navigations that do not emit a navigation event.
@@ -76,46 +138,32 @@
     return options;
   };
 
-  const isSupportedOrigin = (url) =>
-    url.origin === "https://chatgpt.com" || url.origin === "https://chat.openai.com";
-
   // Treat the param as present unless it is explicitly disabled, so a value
-  // ChatGPT might normalize differently (e.g. "1", or a bare key) does not
-  // trigger an endless re-redirect to "...=true".
+  // the site might normalize differently (e.g. "1", or a bare key) does not
+  // trigger an endless re-redirect.
   const hasTemporaryParam = (url) => {
-    const value = url.searchParams.get(TEMPORARY_PARAM);
-    return value !== null && value !== "false";
-  };
+    const site = getSiteForUrl(url);
 
-  const isConversationOrUtilityPath = (pathname) => {
-    const utilityPrefixes = [
-      "/api",
-      "/auth",
-      "/backend-api",
-      "/c/",
-      "/gpts",
-      "/logout",
-      "/pricing",
-      "/public-api",
-      "/search",
-      "/share/",
-      "/signin",
-      "/settings"
-    ];
-
-    if (utilityPrefixes.some((prefix) => pathname.startsWith(prefix))) {
-      return true;
-    }
-
-    return /\/c\/[0-9a-f-]{8,}/i.test(pathname);
-  };
-
-  const isLikelyNewChatPath = (url) => {
-    if (!isSupportedOrigin(url) || isConversationOrUtilityPath(url.pathname)) {
+    if (!site) {
       return false;
     }
 
-    return url.pathname === "/" || url.pathname === "" || /^\/g\/[^/]+\/?$/.test(url.pathname);
+    const value = url.searchParams.get(site.param);
+    return value !== null && value !== "false";
+  };
+
+  const isConversationOrUtilityPath = (site, pathname) =>
+    site.utilityPrefixes.some((prefix) => pathname.startsWith(prefix)) ||
+    site.conversationPattern.test(pathname);
+
+  const isLikelyNewChatPath = (url) => {
+    const site = getSiteForUrl(url);
+
+    if (!site || isConversationOrUtilityPath(site, url.pathname)) {
+      return false;
+    }
+
+    return site.isNewChatPath(url.pathname);
   };
 
   const withTemporaryParam = (href) => {
@@ -126,7 +174,8 @@
         return null;
       }
 
-      url.searchParams.set(TEMPORARY_PARAM, "true");
+      const site = getSiteForUrl(url);
+      url.searchParams.set(site.param, site.paramValue);
       return url.href;
     } catch {
       return null;
@@ -293,9 +342,64 @@
     element.isConnected &&
     !element.closest(`#${INLINE_TOGGLE_ID}`) &&
     isVisible(element) &&
-    containsAny(getElementText(element), TEMPORARY_CHAT_TEXT);
+    containsAny(getElementText(element), PAGE_SITE.controlText);
 
   let cachedAnchor = null;
+  let anchorResizeObserver = null;
+  let observedAnchor = null;
+
+  // The anchor pill can grow/shrink via pure CSS (e.g. hover expands it to
+  // show its label), which emits no DOM mutations; watch its size directly so
+  // the toggle is repositioned instead of being overlapped by the wider pill.
+  const observeAnchorResize = (anchor) => {
+    if (observedAnchor === anchor || typeof ResizeObserver !== "function") {
+      return;
+    }
+
+    if (!anchorResizeObserver) {
+      anchorResizeObserver = new ResizeObserver(() => scheduleInlineToggleSync());
+    }
+
+    anchorResizeObserver.disconnect();
+    observedAnchor = anchor;
+
+    if (anchor) {
+      anchorResizeObserver.observe(anchor);
+    }
+  };
+
+  // Non-interactive indicator variant: scan the site's header actions
+  // container for a short-text match. Nested wrappers around the label all
+  // match, so pick the largest one — the outermost wrapper, icon included —
+  // to anchor left of the whole indicator instead of just its text node.
+  const findIndicatorAnchor = () => {
+    if (!PAGE_SITE.indicatorContainerSelector) {
+      return null;
+    }
+
+    const container = document.querySelector(PAGE_SITE.indicatorContainerSelector);
+
+    if (!container) {
+      return null;
+    }
+
+    const matches = [container, ...container.querySelectorAll("div, span")].filter((element) => {
+      if (element.closest(`#${INLINE_TOGGLE_ID}`) || !isVisible(element)) {
+        return false;
+      }
+
+      const text = getElementText(element).replace(/\s+/g, " ").trim();
+
+      // A long string means the element wraps unrelated header content.
+      return text.length <= 80 && containsAny(text, PAGE_SITE.controlText);
+    });
+
+    return matches
+      .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+      .sort(
+        (a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height
+      )[0]?.element || null;
+  };
 
   // Anchor the inline toggle to ChatGPT's own Temporary Chat control (the
   // dashed-bubble button in the top bar), not to the big centered heading.
@@ -317,7 +421,7 @@
           (a, b) =>
             a.rect.top - b.rect.top ||
             a.rect.width * a.rect.height - b.rect.width * b.rect.height
-        )[0]?.element || null;
+        )[0]?.element || findIndicatorAnchor();
 
     return cachedAnchor;
   };
@@ -327,6 +431,7 @@
     const button = container.querySelector("button");
     const label = container.querySelector(".temporary-chat-auto-label");
     const anchor = findTemporaryChatAnchor();
+    observeAnchorResize(anchor);
 
     if (label) {
       label.textContent = t("inlineToggleLabel");
@@ -335,9 +440,6 @@
     button.setAttribute("aria-label", t("inlineToggleAriaLabel"));
     button.setAttribute("aria-pressed", String(options.enabled));
     button.title = options.enabled ? t("inlineToggleTitleOn") : t("inlineToggleTitleOff");
-
-    const toggleWidth = container.offsetWidth || 74;
-    const toggleHeight = container.offsetHeight || 28;
 
     if (!anchor) {
       // No ChatGPT control found. Still keep the toggle visible (top-right) on
@@ -362,20 +464,30 @@
     }
 
     container.hidden = false;
+
+    // Measure after unhiding: a hidden container reports zero and the 74px
+    // fallback is narrower than the rendered toggle, shifting it onto the pill.
+    const toggleWidth = container.offsetWidth || 74;
+    const toggleHeight = container.offsetHeight || 28;
     const anchorRect = anchor.getBoundingClientRect();
     const gap = 10;
 
     // Sit just to the left of ChatGPT's Temporary Chat button; flip to its
-    // right only when there is no room on the left.
+    // right when the left lacks room, and drop below the button when neither
+    // side fits, so the toggle never covers it.
     let left = anchorRect.left - toggleWidth - gap;
+    let top = anchorRect.top + (anchorRect.height - toggleHeight) / 2;
+
     if (left < 8) {
-      left = Math.min(anchorRect.right + gap, window.innerWidth - toggleWidth - 8);
+      if (anchorRect.right + gap + toggleWidth <= window.innerWidth - 8) {
+        left = anchorRect.right + gap;
+      } else {
+        left = Math.max(8, Math.min(anchorRect.right - toggleWidth, window.innerWidth - toggleWidth - 8));
+        top = anchorRect.bottom + gap;
+      }
     }
 
-    const top = Math.min(
-      Math.max(8, anchorRect.top + (anchorRect.height - toggleHeight) / 2),
-      window.innerHeight - toggleHeight - 8
-    );
+    top = Math.min(Math.max(8, top), window.innerHeight - toggleHeight - 8);
 
     container.style.top = `${Math.round(top)}px`;
     container.style.left = `${Math.round(left)}px`;
@@ -487,7 +599,7 @@
 
       // A real toggle's label is short; a long string means we matched a big
       // container's text and would click the wrong control.
-      if (label.length > 80 || !containsAny(label, TEMPORARY_CHAT_TEXT)) {
+      if (label.length > 80 || !containsAny(label, PAGE_SITE.controlText)) {
         continue;
       }
 
@@ -500,6 +612,10 @@
   };
 
   const clickTemporaryToggleIfClearlyOff = () => {
+    if (!PAGE_SITE.clickToggle) {
+      return false;
+    }
+
     const toggle = findVisibleTemporaryToggle();
 
     if (!toggle) {
@@ -548,21 +664,15 @@
     for (const anchor of document.querySelectorAll("a[href]")) {
       const href = anchor.getAttribute("href") || "";
 
-      // Sidebar conversation links are the bulk of anchors on the page and can
-      // never be a new chat; skip them before the costly text read.
-      if (href.startsWith("/c/")) {
+      // Sidebar conversation and utility links are the bulk of anchors on the
+      // page and can never be a new chat; skip them before the costly text read.
+      if (isConversationOrUtilityPath(PAGE_SITE, href)) {
         continue;
       }
 
-      const looksLikeRootNewChat =
-        href === "/" ||
-        href.startsWith("/?") ||
-        href.startsWith("https://chatgpt.com/?") ||
-        href.startsWith("https://chat.openai.com/?");
-
       // Short-circuit: only read aria-label/title/textContent when the cheap
-      // href shape did not already identify a root new-chat link.
-      if ((looksLikeRootNewChat || containsAny(getElementText(anchor), NEW_CHAT_TEXT)) && patchAnchor(anchor)) {
+      // href shape did not already identify a new-chat link.
+      if ((PAGE_SITE.isNewChatHref(href) || containsAny(getElementText(anchor), NEW_CHAT_TEXT)) && patchAnchor(anchor)) {
         patched += 1;
       }
     }
@@ -578,7 +688,7 @@
     event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 
   const navigateToTemporaryChat = () => {
-    const temporaryHref = withTemporaryParam(location.origin + "/");
+    const temporaryHref = withTemporaryParam(location.origin + PAGE_SITE.newChatBasePath);
 
     if (temporaryHref) {
       location.assign(temporaryHref);
@@ -744,6 +854,10 @@
     watchDomChanges();
     applyTemporaryChatMode("init");
   };
+
+  if (!PAGE_SITE) {
+    return;
+  }
 
   init().catch((error) => {
     console.warn("[Temporary Chat Auto] Failed to initialize", error);

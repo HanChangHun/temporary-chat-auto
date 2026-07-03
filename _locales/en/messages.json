@@ -3,7 +3,7 @@
     "message": "Temporary Chat Auto"
   },
   "extensionDescription": {
-    "message": "Automatically opens new ChatGPT chats with Temporary Chat enabled. Unofficial extension."
+    "message": "Automatically opens new ChatGPT chats in Temporary Chat and new Claude chats in Incognito mode. Unofficial extension."
   },
   "extensionName": {
     "message": "ChatGPT Temporary Chat Auto"
@@ -27,7 +27,7 @@
     "message": "Apply to current tab"
   },
   "popupAutoDescription": {
-    "message": "Open new ChatGPT conversations in Temporary Chat."
+    "message": "Open new ChatGPT conversations in Temporary Chat and new Claude conversations in Incognito."
   },
   "popupAutoTitle": {
     "message": "Auto Temporary Chat"
@@ -42,7 +42,7 @@
     "message": "No active tab"
   },
   "statusOpenChatGptTab": {
-    "message": "Open a ChatGPT tab"
+    "message": "Open a ChatGPT or Claude tab"
   },
   "statusReady": {
     "message": "Ready"

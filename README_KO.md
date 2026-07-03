@@ -1,6 +1,6 @@
 # ChatGPT Temporary Chat Auto
 
-ChatGPT 새 대화를 자동으로 Temporary Chat 모드로 열어 주는 Chrome Manifest V3 확장입니다.
+ChatGPT 새 대화는 자동으로 Temporary Chat 모드로, Claude 새 대화는 시크릿 채팅 모드로 열어 주는 Chrome Manifest V3 확장입니다.
 
 이 확장은 비공식 확장이며 OpenAI와 관련이 없습니다.
 
@@ -9,8 +9,9 @@ ChatGPT 새 대화를 자동으로 Temporary Chat 모드로 열어 주는 Chrome
 ## 기능
 
 - 새 ChatGPT 대화를 `temporary-chat=true` URL로 엽니다.
-- `chatgpt.com`과 `chat.openai.com`의 New chat 링크를 보정합니다.
-- ChatGPT의 Temporary Chat 표시 근처에 작은 인페이지 토글을 추가합니다.
+- 새 Claude 대화(`claude.ai`)를 `incognito` 파라미터가 붙은 URL로 엽니다.
+- `chatgpt.com`, `chat.openai.com`, `claude.ai`의 New chat 링크를 보정합니다.
+- 각 사이트의 Temporary Chat/시크릿 채팅 표시 근처에 작은 인페이지 토글을 추가합니다.
 - 팝업은 자동 적용을 켜고 끄는 체크박스 하나만 제공합니다.
 - Chrome sync storage에는 사용자의 켜기/끄기 설정만 저장합니다.
 
@@ -30,14 +31,14 @@ ChatGPT 새 대화를 자동으로 Temporary Chat 모드로 열어 주는 Chrome
 
 ## 동작 방식
 
-- 확장은 `https://chatgpt.com/*`과 `https://chat.openai.com/*`에서만 동작합니다.
-- 새 채팅 URL과 New chat 링크에 `temporary-chat=true` 파라미터를 붙입니다.
-- 화면에 Temporary Chat 토글이 보이고 꺼진 상태가 명확할 때만 켭니다.
+- 확장은 `https://chatgpt.com/*`, `https://chat.openai.com/*`, `https://claude.ai/*`에서만 동작합니다.
+- 새 채팅 URL과 New chat 링크에 사이트별 비공개 채팅 파라미터(ChatGPT는 `temporary-chat=true`, Claude는 `incognito`)를 붙입니다.
+- ChatGPT 화면에 Temporary Chat 토글이 보이고 꺼진 상태가 명확할 때만 켭니다.
 - 팝업과 ChatGPT 화면 안의 작은 토글은 같은 켜기/끄기 설정을 제어합니다.
 
 ## 개인정보
 
-확장은 사용자 데이터를 수집, 전송, 판매, 공유하지 않습니다. ChatGPT 대화 내용, 계정 정보, 프롬프트, 응답을 외부 서버로 보내지 않습니다.
+확장은 사용자 데이터를 수집, 전송, 판매, 공유하지 않습니다. ChatGPT·Claude 대화 내용, 계정 정보, 프롬프트, 응답을 외부 서버로 보내지 않습니다.
 
 자세한 내용은 [PRIVACY.md](PRIVACY.md)를 확인하세요.
 

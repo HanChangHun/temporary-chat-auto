@@ -3,7 +3,7 @@
     "message": "Temporary Chat Auto"
   },
   "extensionDescription": {
-    "message": "새 ChatGPT 대화를 자동으로 임시 채팅으로 엽니다. 비공식 확장입니다."
+    "message": "새 ChatGPT 대화는 임시 채팅으로, 새 Claude 대화는 시크릿 채팅으로 자동으로 엽니다. 비공식 확장입니다."
   },
   "extensionName": {
     "message": "ChatGPT Temporary Chat Auto"
@@ -27,7 +27,7 @@
     "message": "현재 탭에 적용"
   },
   "popupAutoDescription": {
-    "message": "새 ChatGPT 대화를 임시 채팅으로 엽니다."
+    "message": "새 ChatGPT 대화는 임시 채팅으로, 새 Claude 대화는 시크릿 채팅으로 엽니다."
   },
   "popupAutoTitle": {
     "message": "자동 임시 채팅"
@@ -42,7 +42,7 @@
     "message": "활성 탭 없음"
   },
   "statusOpenChatGptTab": {
-    "message": "ChatGPT 탭에서 사용 가능"
+    "message": "ChatGPT 또는 Claude 탭에서 사용 가능"
   },
   "statusReady": {
     "message": "준비됨"

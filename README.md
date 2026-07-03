@@ -1,6 +1,6 @@
 # ChatGPT Temporary Chat Auto
 
-Automatically open new ChatGPT chats with Temporary Chat enabled.
+Automatically open new ChatGPT chats with Temporary Chat enabled, and new Claude chats in Incognito mode.
 
 This is an unofficial extension and is not affiliated with OpenAI.
 
@@ -9,8 +9,9 @@ This is an unofficial extension and is not affiliated with OpenAI.
 ## Features
 
 - Opens new ChatGPT chats with `temporary-chat=true`.
-- Patches New chat links on `chatgpt.com` and `chat.openai.com`.
-- Adds a compact in-page toggle near ChatGPT's Temporary Chat indicator.
+- Opens new Claude chats on `claude.ai` with the `incognito` parameter.
+- Patches New chat links on `chatgpt.com`, `chat.openai.com`, and `claude.ai`.
+- Adds a compact in-page toggle near each site's Temporary/Incognito chat indicator.
 - Keeps the popup simple with one on/off control.
 - Stores only the user's on/off preference in Chrome sync storage.
 
@@ -30,14 +31,14 @@ The extension has been submitted to the Chrome Web Store and is waiting for revi
 
 ## How It Works
 
-- The extension runs only on `https://chatgpt.com/*` and `https://chat.openai.com/*`.
-- It updates new-chat URLs and New chat links with the `temporary-chat=true` parameter.
+- The extension runs only on `https://chatgpt.com/*`, `https://chat.openai.com/*`, and `https://claude.ai/*`.
+- It updates new-chat URLs and New chat links with each site's private-chat parameter (`temporary-chat=true` on ChatGPT, `incognito` on Claude).
 - If ChatGPT exposes a visible Temporary Chat toggle and it is clearly off, the extension can turn it on.
 - The popup and in-page toggle both control the same single preference.
 
 ## Privacy
 
-The extension does not collect, transmit, sell, or share user data. It does not read or send ChatGPT conversation content to any server.
+The extension does not collect, transmit, sell, or share user data. It does not read or send ChatGPT or Claude conversation content to any server.
 
 See [PRIVACY.md](PRIVACY.md).
 

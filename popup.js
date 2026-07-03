@@ -7,12 +7,12 @@
   const DEFAULT_MESSAGES = {
     extensionActionTitle: "Temporary Chat Auto",
     popupApplyButton: "Apply to current tab",
-    popupAutoDescription: "Open new ChatGPT conversations in Temporary Chat.",
+    popupAutoDescription: "Open new ChatGPT conversations in Temporary Chat and new Claude conversations in Incognito.",
     popupAutoTitle: "Auto Temporary Chat",
     popupSupportLink: "Support development",
     statusApplied: "Applied",
     statusNoActiveTab: "No active tab",
-    statusOpenChatGptTab: "Open a ChatGPT tab",
+    statusOpenChatGptTab: "Open a ChatGPT or Claude tab",
     statusReady: "Ready",
     statusSaveFailed: "Save failed",
     statusSaved: "Saved"

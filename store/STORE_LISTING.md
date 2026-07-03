@@ -6,17 +6,17 @@ ChatGPT Temporary Chat Auto
 
 ## Short Description
 
-Automatically opens new ChatGPT chats with Temporary Chat enabled. Unofficial extension.
+Automatically opens new ChatGPT chats in Temporary Chat and new Claude chats in Incognito mode. Unofficial extension.
 
 ## Detailed Description
 
-ChatGPT Temporary Chat Auto makes Temporary Chat the default for new ChatGPT conversations.
+ChatGPT Temporary Chat Auto makes private chats the default: Temporary Chat for new ChatGPT conversations and Incognito for new Claude conversations.
 
-When you open ChatGPT or click New chat, the extension keeps the Temporary Chat URL parameter in place so new chats start in Temporary Chat mode. It works on `chatgpt.com` and `chat.openai.com`.
+When you open ChatGPT or Claude, or click New chat, the extension keeps each site's private-chat URL parameter in place so new chats start in Temporary Chat or Incognito mode. It works on `chatgpt.com`, `chat.openai.com`, and `claude.ai`.
 
-Use the popup to turn automatic Temporary Chat on or off. On the ChatGPT page, a compact Auto toggle can appear near the Temporary Chat indicator for quick control.
+Use the popup to turn automation on or off. On the page, a compact Auto toggle can appear near each site's Temporary/Incognito chat indicator for quick control.
 
-This is an unofficial extension and is not affiliated with OpenAI.
+This is an unofficial extension and is not affiliated with OpenAI or Anthropic.
 
 ## Category
 
@@ -28,7 +28,7 @@ English
 
 ## Single Purpose
 
-Automatically open new ChatGPT chats in Temporary Chat mode.
+Automatically open new ChatGPT and Claude chats in their private chat modes (Temporary Chat / Incognito).
 
 ## Permission Justifications
 
@@ -43,6 +43,10 @@ Allows the extension to run on ChatGPT pages so it can add the Temporary Chat UR
 ### Host permission: https://chat.openai.com/*
 
 Supports the older ChatGPT domain for users who are still routed through `chat.openai.com`.
+
+### Host permission: https://claude.ai/*
+
+Allows the extension to run on Claude pages so it can add the Incognito URL parameter to new chat links and apply the user's preference.
 
 ## Remote Code
 
@@ -63,10 +67,11 @@ Recommended Chrome Web Store data disclosure:
 1. Install the extension from the submitted package.
 2. Open `https://chatgpt.com/`.
 3. Confirm that opening a new chat routes to a URL with `temporary-chat=true`.
-4. Open the extension popup and turn automation off.
-5. Confirm New chat links are no longer modified by the extension.
+4. Open `https://claude.ai/` and confirm a new chat routes to a URL with the `incognito` parameter.
+5. Open the extension popup and turn automation off.
+6. Confirm New chat links are no longer modified by the extension.
 
-No test credentials are required. The reviewer can test with any ChatGPT account.
+No test credentials are required. The reviewer can test with any ChatGPT and Claude account.
 
 ## Store Assets
 

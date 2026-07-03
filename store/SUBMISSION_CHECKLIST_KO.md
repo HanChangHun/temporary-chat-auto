@@ -10,25 +10,25 @@
 
 - Chrome Web Store Developer Dashboard에서 `새 항목` 또는 `New item`을 선택합니다.
 - 업로드 파일:
-  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto-0.1.5-store.zip`
+  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto-0.1.6-store.zip`
 
 ## 3. 스토어 등록정보
 
 - 이름: `ChatGPT Temporary Chat Auto`
 - 간단한 설명:
-  - `Automatically opens new ChatGPT chats with Temporary Chat enabled. Unofficial extension.`
+  - `Automatically opens new ChatGPT chats in Temporary Chat and new Claude chats in Incognito mode. Unofficial extension.`
 - 카테고리: `Productivity`
 - 언어: `English`
 - 자세한 설명:
 
 ```text
-ChatGPT Temporary Chat Auto makes Temporary Chat the default for new ChatGPT conversations.
+ChatGPT Temporary Chat Auto makes private chats the default: Temporary Chat for new ChatGPT conversations and Incognito for new Claude conversations.
 
-When you open ChatGPT or click New chat, the extension keeps the Temporary Chat URL parameter in place so new chats start in Temporary Chat mode. It works on chatgpt.com and chat.openai.com.
+When you open ChatGPT or Claude, or click New chat, the extension keeps each site's private-chat URL parameter in place so new chats start in Temporary Chat or Incognito mode. It works on chatgpt.com, chat.openai.com, and claude.ai.
 
-Use the popup to turn automatic Temporary Chat on or off. On the ChatGPT page, a compact Auto toggle can appear near the Temporary Chat indicator for quick control.
+Use the popup to turn automation on or off. On the page, a compact Auto toggle can appear near each site's Temporary/Incognito chat indicator for quick control.
 
-This is an unofficial extension and is not affiliated with OpenAI.
+This is an unofficial extension and is not affiliated with OpenAI or Anthropic.
 ```
 
 ## 4. 이미지
@@ -52,7 +52,7 @@ This is an unofficial extension and is not affiliated with OpenAI.
 - 전용 목적 설명:
 
 ```text
-Automatically open new ChatGPT chats in Temporary Chat mode. The extension updates ChatGPT new chat URLs and New chat links so they include the Temporary Chat URL parameter, and it stores only the user's extension preferences.
+Automatically open new ChatGPT and Claude chats in their private chat modes (Temporary Chat / Incognito). The extension updates new chat URLs and New chat links so they include each site's private-chat URL parameter, and it stores only the user's extension preferences.
 ```
 
 ## 6. 권한 설명
@@ -69,10 +69,14 @@ Allows the extension to run on ChatGPT pages so it can add the Temporary Chat UR
 
 Supports the older ChatGPT domain for users who are still routed through chat.openai.com.
 
+### https://claude.ai/*
+
+Allows the extension to run on Claude pages so it can add the Incognito URL parameter to new chat links and apply the user's preference.
+
 ### 호스트 권한 사용 근거 칸이 하나만 있는 경우
 
 ```text
-Required to run only on chatgpt.com and chat.openai.com so the extension can update New chat links with the Temporary Chat URL parameter and apply the user's Temporary Chat preference. The extension does not collect, transmit, or store ChatGPT conversation content.
+Required to run only on chatgpt.com, chat.openai.com, and claude.ai so the extension can update New chat links with each site's private-chat URL parameter (Temporary Chat / Incognito) and apply the user's preference. The extension does not collect, transmit, or store conversation content.
 ```
 
 ## 6.1 게시자 연락처 이메일
@@ -87,15 +91,16 @@ Required to run only on chatgpt.com and chat.openai.com so the extension can upd
 1. Install the extension from the submitted package.
 2. Open https://chatgpt.com/.
 3. Confirm that opening a new chat routes to a URL with temporary-chat=true.
-4. Open the extension popup and turn automation off.
-5. Confirm New chat links are no longer modified by the extension.
+4. Open https://claude.ai/ and confirm a new chat routes to a URL with the incognito parameter.
+5. Open the extension popup and turn automation off.
+6. Confirm New chat links are no longer modified by the extension.
 
-No test credentials are required. The reviewer can test with any ChatGPT account.
+No test credentials are required. The reviewer can test with any ChatGPT and Claude account.
 ```
 
 ## 8. 제출 전 확인
 
 - 확장은 무료입니다.
-- 확장은 OpenAI 공식 확장이 아닙니다.
-- 확장은 ChatGPT 대화 내용, 계정 정보, 프롬프트, 응답을 외부 서버로 전송하지 않습니다.
+- 확장은 OpenAI·Anthropic 공식 확장이 아닙니다.
+- 확장은 ChatGPT·Claude 대화 내용, 계정 정보, 프롬프트, 응답을 외부 서버로 전송하지 않습니다.
 - 확장은 원격 코드를 불러오지 않습니다.

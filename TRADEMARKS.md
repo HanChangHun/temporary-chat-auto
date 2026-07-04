@@ -15,4 +15,4 @@ Forks and derivative works should:
 
 These restrictions apply only to rights held by this project. They do not grant rights to any third-party marks, product names, or user interface elements shown in screenshots.
 
-"ChatGPT" and "OpenAI" are trademarks of their respective owners. This project is unofficial and is not affiliated with OpenAI.
+"ChatGPT", "OpenAI", "Claude", and "Anthropic" are trademarks of their respective owners. This project is unofficial and is not affiliated with OpenAI or Anthropic.

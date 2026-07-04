@@ -14,7 +14,7 @@
 
 ## 3. 스토어 등록정보
 
-- 이름: `ChatGPT Temporary Chat Auto`
+- 이름: `Temporary Chat Auto for ChatGPT & Claude`
 - 간단한 설명:
   - `Automatically opens new ChatGPT chats in Temporary Chat and new Claude chats in Incognito mode. Unofficial extension.`
 - 카테고리: `Productivity`
@@ -22,9 +22,9 @@
 - 자세한 설명:
 
 ```text
-ChatGPT Temporary Chat Auto makes private chats the default: Temporary Chat for new ChatGPT conversations and Incognito for new Claude conversations.
+Temporary Chat Auto for ChatGPT & Claude makes private chats the default: Temporary Chat for new ChatGPT conversations and Incognito for new Claude conversations.
 
-When you open ChatGPT or Claude, or click New chat, the extension keeps each site's private-chat URL parameter in place so new chats start in Temporary Chat or Incognito mode. It works on chatgpt.com, chat.openai.com, and claude.ai.
+When you open ChatGPT or Claude, or click New chat, the extension adds each site's private-chat URL parameter to the new chat's address so it starts in Temporary Chat (ChatGPT) or Incognito (Claude) mode. On ChatGPT it can also turn on the site's own Temporary Chat toggle when a new chat shows it visibly off. It works on chatgpt.com, chat.openai.com, and claude.ai.
 
 Use the popup to turn automation on or off for each site independently. On the page, a compact Auto toggle can appear near each site's Temporary/Incognito chat indicator for quick control.
 
@@ -35,16 +35,16 @@ This is an unofficial extension and is not affiliated with OpenAI or Anthropic.
 
 - 아이콘: 패키지 안의 `icons/icon-128.png`
 - 스크린샷:
-  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto\store\assets\screenshot-1280x800.png`
+  - `C:\Users\ehwjs\workspaces\temporary-chat-auto\store\assets\screenshot-1280x800.png`
 - Small promo tile:
-  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto\store\assets\promo-small-440x280.png`
+  - `C:\Users\ehwjs\workspaces\temporary-chat-auto\store\assets\promo-small-440x280.png`
 - Marquee promo tile:
-  - `C:\Users\ehwjs\workspaces\chatgpt-temporary-chat-auto\store\assets\promo-marquee-1400x560.png`
+  - `C:\Users\ehwjs\workspaces\temporary-chat-auto\store\assets\promo-marquee-1400x560.png`
 
 ## 5. 개인정보
 
 - Privacy policy URL:
-  - `https://github.com/HanChangHun/chatgpt-temporary-chat-auto/blob/main/PRIVACY.md`
+  - `https://github.com/HanChangHun/temporary-chat-auto/blob/main/PRIVACY.md`
 - 데이터 수집:
   - 사용자 데이터 수집 안 함
 - Remote code:
@@ -52,7 +52,7 @@ This is an unofficial extension and is not affiliated with OpenAI or Anthropic.
 - 전용 목적 설명:
 
 ```text
-Automatically open new ChatGPT and Claude chats in their private chat modes (Temporary Chat / Incognito). The extension updates new chat URLs and New chat links so they include each site's private-chat URL parameter, and it stores only the user's extension preferences.
+Automatically open new ChatGPT and Claude chats in their private chat modes (Temporary Chat / Incognito). The extension updates new chat URLs and New chat links so they include each site's private-chat URL parameter, can turn on ChatGPT's own Temporary Chat toggle on a new chat page, and stores only the user's extension preferences.
 ```
 
 ## 6. 권한 설명
@@ -63,7 +63,7 @@ Stores the user's extension preferences, specifically whether automatic private 
 
 ### https://chatgpt.com/*
 
-Allows the extension to run on ChatGPT pages so it can add the Temporary Chat URL parameter to new chat links and apply the user's Temporary Chat preference.
+Allows the extension to run on ChatGPT pages so it can add the Temporary Chat URL parameter to new chat links and, when a new chat is not yet in Temporary Chat, turn on ChatGPT's own Temporary Chat toggle on the page.
 
 ### https://chat.openai.com/*
 
@@ -76,7 +76,7 @@ Allows the extension to run on Claude pages so it can add the Incognito URL para
 ### 호스트 권한 사용 근거 칸이 하나만 있는 경우
 
 ```text
-Required to run only on chatgpt.com, chat.openai.com, and claude.ai so the extension can update New chat links with each site's private-chat URL parameter (Temporary Chat / Incognito) and apply the user's preference. The extension does not collect, transmit, or store conversation content.
+Required to run only on chatgpt.com, chat.openai.com, and claude.ai so the extension can update New chat links with each site's private-chat URL parameter (Temporary Chat / Incognito) and, on ChatGPT, turn on the site's own Temporary Chat toggle when a new chat shows it visibly off. The extension does not collect, transmit, or store conversation content.
 ```
 
 ## 6.1 게시자 연락처 이메일
@@ -92,8 +92,8 @@ Required to run only on chatgpt.com, chat.openai.com, and claude.ai so the exten
 2. Open https://chatgpt.com/.
 3. Confirm that opening a new chat routes to a URL with temporary-chat=true.
 4. Open https://claude.ai/ and confirm a new chat routes to a URL with the incognito parameter.
-5. Open the extension popup and turn automation off.
-6. Confirm New chat links are no longer modified by the extension.
+5. Open the extension popup and turn off both the ChatGPT and Claude toggles.
+6. Confirm New chat links on both sites are no longer modified by the extension.
 
 No test credentials are required. The reviewer can test with any ChatGPT and Claude account.
 ```

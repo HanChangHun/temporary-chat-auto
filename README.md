@@ -1,8 +1,8 @@
-# ChatGPT Temporary Chat Auto
+# Temporary Chat Auto for ChatGPT & Claude
 
 Automatically open new ChatGPT chats with Temporary Chat enabled, and new Claude chats in Incognito mode.
 
-This is an unofficial extension and is not affiliated with OpenAI.
+This is an unofficial extension and is not affiliated with OpenAI or Anthropic.
 
 [한국어 README](README_KO.md)
 
@@ -23,7 +23,7 @@ The extension has been submitted to the Chrome Web Store and is waiting for revi
 
 ### Manual install
 
-1. Download the latest store package from [Releases](https://github.com/HanChangHun/chatgpt-temporary-chat-auto/releases).
+1. Download the latest store package from [Releases](https://github.com/HanChangHun/temporary-chat-auto/releases).
 2. Unzip the package.
 3. Open `chrome://extensions` in Chrome.
 4. Enable `Developer mode`.
@@ -33,12 +33,12 @@ The extension has been submitted to the Chrome Web Store and is waiting for revi
 
 - The extension runs only on `https://chatgpt.com/*`, `https://chat.openai.com/*`, and `https://claude.ai/*`.
 - It updates new-chat URLs and New chat links with each site's private-chat parameter (`temporary-chat=true` on ChatGPT, `incognito` on Claude).
-- If ChatGPT exposes a visible Temporary Chat toggle and it is clearly off, the extension can turn it on.
+- On a new chat page, if ChatGPT exposes a visible Temporary Chat toggle and it is clearly off, the extension can turn it on.
 - The popup and in-page toggle control the same per-site preference; the ChatGPT and Claude settings are independent.
 
 ## Privacy
 
-The extension does not collect, transmit, sell, or share user data. It does not read or send ChatGPT or Claude conversation content to any server.
+The extension does not collect, transmit, sell, or share user data. It does not read or send ChatGPT or Claude conversation content, account information, prompts, or responses to any server.
 
 See [PRIVACY.md](PRIVACY.md).
 

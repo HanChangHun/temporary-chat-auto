@@ -790,17 +790,25 @@
         location.replace(temporaryHref);
         return;
       }
+
+      // Only operate the site's own toggle on new-chat pages so the click
+      // fallback can never fire inside a saved conversation or settings page.
+      if (isLikelyNewChatPath(currentUrl)) {
+        clickTemporaryToggleIfClearlyOff();
+      }
     } catch {
       return;
     }
-
-    clickTemporaryToggleIfClearlyOff();
   };
 
   const watchLocationChanges = () => {
     window.setInterval(() => {
       if (location.href !== lastHref) {
         lastHref = location.href;
+        // A real URL change must never be dropped by the leading-edge
+        // throttle; otherwise a quiet page after an SPA navigation would
+        // permanently skip the redirect for that new chat.
+        lastApplyAt = 0;
         applyTemporaryChatMode("url-change");
       }
     }, URL_POLL_INTERVAL_MS);

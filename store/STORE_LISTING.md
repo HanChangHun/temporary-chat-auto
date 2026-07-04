@@ -2,7 +2,7 @@
 
 ## Name
 
-ChatGPT Temporary Chat Auto
+Temporary Chat Auto for ChatGPT & Claude
 
 ## Short Description
 
@@ -10,9 +10,9 @@ Automatically opens new ChatGPT chats in Temporary Chat and new Claude chats in 
 
 ## Detailed Description
 
-ChatGPT Temporary Chat Auto makes private chats the default: Temporary Chat for new ChatGPT conversations and Incognito for new Claude conversations.
+Temporary Chat Auto for ChatGPT & Claude makes private chats the default: Temporary Chat for new ChatGPT conversations and Incognito for new Claude conversations.
 
-When you open ChatGPT or Claude, or click New chat, the extension keeps each site's private-chat URL parameter in place so new chats start in Temporary Chat or Incognito mode. It works on `chatgpt.com`, `chat.openai.com`, and `claude.ai`.
+When you open ChatGPT or Claude, or click New chat, the extension adds each site's private-chat URL parameter to the new chat's address so it starts in Temporary Chat (ChatGPT) or Incognito (Claude) mode. On ChatGPT it can also turn on the site's own Temporary Chat toggle when a new chat shows it visibly off. It works on `chatgpt.com`, `chat.openai.com`, and `claude.ai`.
 
 Use the popup to turn automation on or off for each site independently. On the page, a compact Auto toggle can appear near each site's Temporary/Incognito chat indicator for quick control.
 
@@ -38,7 +38,7 @@ Stores the user's extension preferences, specifically whether automatic private 
 
 ### Host permission: https://chatgpt.com/*
 
-Allows the extension to run on ChatGPT pages so it can add the Temporary Chat URL parameter to new chat links and apply the user's Temporary Chat preference.
+Allows the extension to run on ChatGPT pages so it can add the Temporary Chat URL parameter to new chat links and, when a new chat is not yet in Temporary Chat, turn on ChatGPT's own Temporary Chat toggle on the page.
 
 ### Host permission: https://chat.openai.com/*
 
@@ -60,7 +60,7 @@ Recommended Chrome Web Store data disclosure:
 
 - Do not select any user data collection categories.
 - Certify that data is not sold or used for unrelated purposes.
-- Privacy policy URL: `https://github.com/HanChangHun/chatgpt-temporary-chat-auto/blob/main/PRIVACY.md`
+- Privacy policy URL: `https://github.com/HanChangHun/temporary-chat-auto/blob/main/PRIVACY.md`
 
 ## Test Instructions
 
@@ -68,8 +68,8 @@ Recommended Chrome Web Store data disclosure:
 2. Open `https://chatgpt.com/`.
 3. Confirm that opening a new chat routes to a URL with `temporary-chat=true`.
 4. Open `https://claude.ai/` and confirm a new chat routes to a URL with the `incognito` parameter.
-5. Open the extension popup and turn automation off.
-6. Confirm New chat links are no longer modified by the extension.
+5. Open the extension popup and turn off both the ChatGPT and Claude toggles.
+6. Confirm New chat links on both sites are no longer modified by the extension.
 
 No test credentials are required. The reviewer can test with any ChatGPT and Claude account.
 

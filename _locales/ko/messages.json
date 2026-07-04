@@ -6,7 +6,7 @@
     "message": "새 ChatGPT 대화는 임시 채팅으로, 새 Claude 대화는 시크릿 채팅으로 자동으로 엽니다. 비공식 확장입니다."
   },
   "extensionName": {
-    "message": "ChatGPT Temporary Chat Auto"
+    "message": "Temporary Chat Auto for ChatGPT & Claude"
   },
   "extensionShortName": {
     "message": "Temp Chat Auto"

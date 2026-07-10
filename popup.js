@@ -9,29 +9,9 @@
     { input: document.querySelector("#chatgptEnabled"), key: "enabled" },
     { input: document.querySelector("#claudeEnabled"), key: "claudeEnabled" }
   ];
-  const DEFAULT_MESSAGES = {
-    extensionActionTitle: "Temporary Chat Auto",
-    popupApplyButton: "Apply to current tab",
-    popupChatgptToggleDescription: "Open new ChatGPT conversations in Temporary Chat.",
-    popupChatgptToggleTitle: "ChatGPT · Temporary Chat",
-    popupClaudeToggleDescription: "Open new Claude conversations in Incognito.",
-    popupClaudeToggleTitle: "Claude · Incognito",
-    popupSupportLink: "Support development",
-    statusApplied: "Applied",
-    statusNoActiveTab: "No active tab",
-    statusOpenChatGptTab: "Open a ChatGPT or Claude tab",
-    statusReady: "Ready",
-    statusSaveFailed: "Save failed",
-    statusSaved: "Saved"
-  };
-
-  const t = (key) => {
-    try {
-      return chrome.i18n?.getMessage(key) || DEFAULT_MESSAGES[key] || "";
-    } catch {
-      return DEFAULT_MESSAGES[key] || "";
-    }
-  };
+  // Unlike content.js, a popup page cannot outlive its extension context, and
+  // default_locale guarantees getMessage resolves every key — no fallbacks.
+  const t = (key) => chrome.i18n.getMessage(key);
 
   const applyMessages = () => {
     const language = chrome.i18n?.getUILanguage?.() || "en";

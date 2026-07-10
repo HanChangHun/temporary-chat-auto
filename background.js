@@ -21,7 +21,7 @@ const isPreSplitVersion = (version) => {
   return false;
 };
 
-chrome.runtime.onInstalled.addListener((details) => {
+const migrateLegacyEnabledKey = (details) => {
   if (details.reason !== "update" || !isPreSplitVersion(details.previousVersion)) {
     return;
   }
@@ -35,4 +35,37 @@ chrome.runtime.onInstalled.addListener((details) => {
       chrome.storage.sync.set({ claudeEnabled: items.enabled });
     }
   });
+};
+
+// Manifest content scripts are not injected into tabs that are already open
+// when the extension is installed, updated, or reloaded. An update also
+// orphans the previous script's world — its chrome.* APIs die while its DOM
+// listeners keep running until it notices and stands down (see the orphan
+// check in content.js). Re-run the content script in open ChatGPT/Claude tabs
+// so the automation and the on-page toggle keep working without a manual
+// refresh; content.js guards against running twice in the same world.
+const reinjectContentScripts = () => {
+  const urls = ["https://chatgpt.com/*", "https://chat.openai.com/*", "https://claude.ai/*"];
+
+  chrome.tabs.query({ url: urls }, (tabs) => {
+    if (chrome.runtime.lastError) {
+      return;
+    }
+
+    for (const tab of tabs || []) {
+      if (tab.id === undefined) {
+        continue;
+      }
+
+      chrome.scripting.executeScript(
+        { target: { tabId: tab.id }, files: ["content.js"] },
+        () => void chrome.runtime.lastError
+      );
+    }
+  });
+};
+
+chrome.runtime.onInstalled.addListener((details) => {
+  migrateLegacyEnabledKey(details);
+  reinjectContentScripts();
 });

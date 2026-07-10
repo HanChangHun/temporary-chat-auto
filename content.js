@@ -1,7 +1,19 @@
 (() => {
   "use strict";
 
-  const INLINE_TOGGLE_ID = "temporary-chat-auto-inline-toggle";
+  // Injected both via the manifest and programmatically after an install or
+  // update (see background.js); never run twice in the same isolated world.
+  if (window.__temporaryChatAutoContentLoaded) {
+    return;
+  }
+  window.__temporaryChatAutoContentLoaded = true;
+
+  // The class is shared by every install of this extension (and doubles as
+  // the pre-0.1.9 bare id), while the id is namespaced per install so two
+  // copies (e.g. store + unpacked dev build) never fight over one pill.
+  const INLINE_TOGGLE_CLASS = "temporary-chat-auto-inline-toggle";
+  const INLINE_TOGGLE_ID = `${INLINE_TOGGLE_CLASS}-${chrome.runtime.id}`;
+  const PILL_SELECTOR = `.${INLINE_TOGGLE_CLASS}, #${INLINE_TOGGLE_CLASS}`;
   const DEFAULT_OPTIONS = {
     enabled: true,
     debug: false
@@ -23,6 +35,18 @@
     "新建聊天",
     "新しいチャット"
   ];
+
+  // For the click interceptor, which takes a destructive action (preventDefault
+  // + navigation): require a word boundary on the English phrase so e.g.
+  // "renew chat…" never matches, and cap the label length like
+  // findVisibleTemporaryToggle so a composite container whose subtree merely
+  // mentions "new chat" is never hijacked.
+  const NEW_CHAT_PATTERNS = [/\bnew chat\b/, /새 채팅/, /새로운 채팅/, /新建聊天/, /新しいチャット/];
+
+  const matchesNewChatText = (value) => {
+    const normalized = value.replace(/\s+/g, " ").trim().toLowerCase();
+    return normalized.length <= 80 && NEW_CHAT_PATTERNS.some((pattern) => pattern.test(normalized));
+  };
 
   // Per-site behavior: which query param forces the private mode, which paths
   // count as a new chat, and which on-page control the inline toggle anchors to.
@@ -117,9 +141,16 @@
   let options = { ...DEFAULT_OPTIONS };
   let lastHref = location.href;
   let lastApplyAt = 0;
+  let inlineToggleContainer = null;
   let inlineToggleSyncId = 0;
   let applyScheduled = false;
   let havePatchedAnchors = false;
+  let inlineToggleStylesEl = null;
+  let lastAnchorScanAt = 0;
+  let anchorRetryId = 0;
+  let urlPollId = 0;
+  let domObserver = null;
+  let orphaned = false;
 
   const log = (...args) => {
     if (options.debug) {
@@ -172,13 +203,7 @@
   // the site might normalize differently (e.g. "1", or a bare key) does not
   // trigger an endless re-redirect.
   const hasTemporaryParam = (url) => {
-    const site = getSiteForUrl(url);
-
-    if (!site) {
-      return false;
-    }
-
-    const value = url.searchParams.get(site.param);
+    const value = url.searchParams.get(PAGE_SITE.param);
     return value !== null && value !== "false";
   };
 
@@ -250,9 +275,13 @@
   };
 
   const installInlineToggleStyles = () => {
-    if (document.querySelector(`#${INLINE_TOGGLE_ID}-styles`)) {
+    if (inlineToggleStylesEl?.isConnected) {
       return;
     }
+
+    // A stylesheet left by a previous script world may carry an older
+    // version's CSS; replace it so it always matches this world's markup.
+    document.querySelector(`#${INLINE_TOGGLE_ID}-styles`)?.remove();
 
     const style = document.createElement("style");
     style.id = `${INLINE_TOGGLE_ID}-styles`;
@@ -277,6 +306,14 @@
 
       #${INLINE_TOGGLE_ID}[hidden] {
         display: none;
+      }
+
+      /* A pre-0.1.9 world orphaned by this update keeps re-creating its
+         bare-id pill (it has no stand-down logic and its clicks cannot
+         persist); hide it by CSS instead of fighting its recreate loop.
+         This install's own pill carries a namespaced id, never the bare one. */
+      #${INLINE_TOGGLE_CLASS} {
+        display: none !important;
       }
 
       #${INLINE_TOGGLE_ID} button {
@@ -332,19 +369,25 @@
     `;
 
     document.documentElement.append(style);
+    inlineToggleStylesEl = style;
   };
 
   const createInlineToggle = () => {
     installInlineToggleStyles();
 
-    let container = document.querySelector(`#${INLINE_TOGGLE_ID}`);
-
-    if (container) {
-      return container;
+    if (inlineToggleContainer?.isConnected) {
+      return inlineToggleContainer;
     }
 
-    container = document.createElement("div");
+    // Rebuild rather than adopt a pill left by a previous world of THIS
+    // install (that world stands down via the orphan check); the bare legacy
+    // id covers pills from pre-0.1.9 versions. Another install's namespaced
+    // pill is left alone.
+    document.querySelector(`#${INLINE_TOGGLE_ID}, #${INLINE_TOGGLE_CLASS}`)?.remove();
+
+    const container = document.createElement("div");
     container.id = INLINE_TOGGLE_ID;
+    container.className = INLINE_TOGGLE_CLASS;
     container.innerHTML = `
       <button type="button" aria-pressed="true">
         <span class="temporary-chat-auto-label"></span>
@@ -364,15 +407,18 @@
     });
 
     document.documentElement.append(container);
+    inlineToggleContainer = container;
     return container;
   };
 
+  // Cheap text check first: it rejects nearly every candidate without the
+  // layout reads that isVisible forces.
   const anchorMatchesTemporary = (element) =>
     !!element &&
     element.isConnected &&
-    !element.closest(`#${INLINE_TOGGLE_ID}`) &&
-    isVisible(element) &&
-    containsAny(getElementText(element), PAGE_SITE.controlText);
+    containsAny(getElementText(element), PAGE_SITE.controlText) &&
+    !element.closest(PILL_SELECTOR) &&
+    isVisible(element);
 
   let cachedAnchor = null;
   let anchorResizeObserver = null;
@@ -414,7 +460,7 @@
     }
 
     const matches = [container, ...container.querySelectorAll("div, span")].filter((element) => {
-      if (element.closest(`#${INLINE_TOGGLE_ID}`) || !isVisible(element)) {
+      if (element.closest(PILL_SELECTOR) || !isVisible(element)) {
         return false;
       }
 
@@ -440,6 +486,27 @@
       return cachedAnchor;
     }
 
+    // The scroll listener and mutation bursts drive this at frame rate; a
+    // full-document rescan on every cache miss would burn multi-ms frames on
+    // pages that have no matching control at all.
+    const now = Date.now();
+
+    if (now - lastAnchorScanAt < APPLY_THROTTLE_MS) {
+      // Retry once the window passes: if the anchor rendered during it and
+      // the page then went quiet, nothing else would re-trigger a sync and
+      // the pill would be stranded in its fallback spot.
+      if (!anchorRetryId) {
+        anchorRetryId = window.setTimeout(() => {
+          anchorRetryId = 0;
+          scheduleInlineToggleSync();
+        }, APPLY_THROTTLE_MS - (now - lastAnchorScanAt));
+      }
+
+      return null;
+    }
+
+    lastAnchorScanAt = now;
+
     const candidates = Array.from(
       document.querySelectorAll("button, [role='button'], [role='switch'], a[href]")
     ).filter(anchorMatchesTemporary);
@@ -457,6 +524,11 @@
   };
 
   const syncInlineToggle = () => {
+    if (!contextAlive()) {
+      teardownOrphanedWorld();
+      return;
+    }
+
     const container = createInlineToggle();
     const button = container.querySelector("button");
     const label = container.querySelector(".temporary-chat-auto-label");
@@ -464,7 +536,13 @@
     observeAnchorResize(anchor);
 
     if (label) {
-      label.textContent = t("inlineToggleLabel");
+      const labelText = t("inlineToggleLabel");
+
+      // Setting identical textContent still queues a childList mutation,
+      // which would wake the observer and re-schedule this sync forever.
+      if (label.textContent !== labelText) {
+        label.textContent = labelText;
+      }
     }
     container.classList.toggle("is-enabled", options.enabled);
     button.setAttribute("aria-label", t(PAGE_SITE.inlineMessages.ariaLabel));
@@ -476,12 +554,7 @@
     if (!anchor) {
       // No ChatGPT control found. Still keep the toggle visible (top-right) on
       // new-chat screens so it never silently disappears; hide it elsewhere.
-      let onNewChatPage = false;
-      try {
-        onNewChatPage = isLikelyNewChatPath(new URL(location.href));
-      } catch {
-        onNewChatPage = false;
-      }
+      const onNewChatPage = isLikelyNewChatPath(new URL(location.href));
 
       if (!onNewChatPage) {
         container.hidden = true;
@@ -549,12 +622,7 @@
         return;
       }
 
-      if (enabled) {
-        applyTemporaryChatMode("inline-toggle");
-        return;
-      }
-
-      restorePatchedLinks();
+      applyTemporaryChatMode("inline-toggle");
     };
 
     if (!chrome.storage?.sync) {
@@ -564,8 +632,14 @@
 
     // The site's `enabled` flag is the only persisted setting; writing just
     // that key keeps the storage.sync write volume minimal so rapid toggling
-    // never hits the quota.
-    chrome.storage.sync.set({ [PAGE_SITE.storageKey]: enabled }, afterSave);
+    // never hits the quota. In an orphaned world the call throws instead of
+    // reporting lastError; treat that as the same save failure.
+    try {
+      chrome.storage.sync.set({ [PAGE_SITE.storageKey]: enabled }, afterSave);
+    } catch {
+      options = { ...options, enabled: !enabled };
+      scheduleInlineToggleSync();
+    }
   };
 
   const getExplicitCheckedState = (element) => {
@@ -610,12 +684,9 @@
     );
 
     for (const control of controls) {
-      // Never treat our own inline toggle as a ChatGPT control to click.
-      if (control.closest(`#${INLINE_TOGGLE_ID}`)) {
-        continue;
-      }
-
-      if (!isVisible(control)) {
+      // Cheapest check first: three getAttribute reads reject nearly every
+      // control (plain buttons report null, an engaged switch reports true).
+      if (getExplicitCheckedState(control) !== false) {
         continue;
       }
 
@@ -635,9 +706,12 @@
         continue;
       }
 
-      if (getExplicitCheckedState(control) === false) {
-        return control;
+      // Never treat any copy's inline pill as a site control to click.
+      if (control.closest(PILL_SELECTOR) || !isVisible(control)) {
+        continue;
       }
+
+      return control;
     }
 
     return null;
@@ -752,14 +826,46 @@
       return;
     }
 
-    if (containsAny(getElementText(button), NEW_CHAT_TEXT)) {
+    if (matchesNewChatText(getElementText(button))) {
       event.preventDefault();
       event.stopImmediatePropagation();
       navigateToTemporaryChat();
     }
   };
 
+  // An extension update or reload orphans this world: chrome.* dies but the
+  // DOM listeners, observers, and timers keep running. Stand down instead of
+  // fighting the freshly injected script for the page.
+  const contextAlive = () => {
+    try {
+      return Boolean(chrome.runtime?.id);
+    } catch {
+      return false;
+    }
+  };
+
+  const teardownOrphanedWorld = () => {
+    if (orphaned) {
+      return;
+    }
+
+    orphaned = true;
+    window.clearInterval(urlPollId);
+    window.clearTimeout(anchorRetryId);
+    domObserver?.disconnect();
+    anchorResizeObserver?.disconnect();
+    document.removeEventListener("click", onCapturedClick, true);
+    window.removeEventListener("resize", scheduleInlineToggleSync);
+    window.removeEventListener("scroll", scheduleInlineToggleSync, true);
+    inlineToggleContainer?.remove();
+  };
+
   const applyTemporaryChatMode = (reason = "apply") => {
+    if (!contextAlive()) {
+      teardownOrphanedWorld();
+      return;
+    }
+
     scheduleInlineToggleSync();
 
     if (!options.enabled) {
@@ -776,33 +882,32 @@
     lastApplyAt = now;
     patchNewChatLinks();
 
-    try {
-      const currentUrl = new URL(location.href);
-      const temporaryHref = withTemporaryParam(currentUrl.href);
+    // Only redirect and operate the site's own toggle on new-chat pages so
+    // neither can ever fire inside a saved conversation or settings page.
+    const currentUrl = new URL(location.href);
 
-      if (
-        temporaryHref &&
-        temporaryHref !== currentUrl.href &&
-        isLikelyNewChatPath(currentUrl) &&
-        !hasTemporaryParam(currentUrl)
-      ) {
-        log("Redirecting to temporary chat URL", reason, temporaryHref);
-        location.replace(temporaryHref);
-        return;
-      }
-
-      // Only operate the site's own toggle on new-chat pages so the click
-      // fallback can never fire inside a saved conversation or settings page.
-      if (isLikelyNewChatPath(currentUrl)) {
-        clickTemporaryToggleIfClearlyOff();
-      }
-    } catch {
+    if (!isLikelyNewChatPath(currentUrl)) {
       return;
     }
+
+    const temporaryHref = withTemporaryParam(currentUrl.href);
+
+    if (temporaryHref && temporaryHref !== currentUrl.href && !hasTemporaryParam(currentUrl)) {
+      log("Redirecting to temporary chat URL", reason, temporaryHref);
+      location.replace(temporaryHref);
+      return;
+    }
+
+    clickTemporaryToggleIfClearlyOff();
   };
 
   const watchLocationChanges = () => {
-    window.setInterval(() => {
+    urlPollId = window.setInterval(() => {
+      if (!contextAlive()) {
+        teardownOrphanedWorld();
+        return;
+      }
+
       if (location.href !== lastHref) {
         lastHref = location.href;
         // A real URL change must never be dropped by the leading-edge
@@ -831,11 +936,11 @@
   };
 
   const watchDomChanges = () => {
-    const observer = new MutationObserver(() => {
+    domObserver = new MutationObserver(() => {
       scheduleApply("dom-change");
     });
 
-    observer.observe(document.documentElement, {
+    domObserver.observe(document.documentElement, {
       childList: true,
       subtree: true
     });
@@ -872,13 +977,6 @@
       }
 
       if (changed) {
-        if (!options.enabled) {
-          restorePatchedLinks();
-          scheduleInlineToggleSync();
-          return;
-        }
-
-        scheduleInlineToggleSync();
         applyTemporaryChatMode("settings-change");
       }
     });

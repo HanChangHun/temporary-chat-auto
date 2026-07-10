@@ -36,6 +36,10 @@ Automatically open new ChatGPT and Claude chats in their private chat modes (Tem
 
 Stores the user's extension preferences, specifically whether automatic private chat mode is enabled for each supported site.
 
+### scripting
+
+Used only right after the extension is installed or updated: it re-runs the extension's own bundled content script in ChatGPT and Claude tabs that are already open, so the on-page Auto toggle keeps working without a manual tab refresh. No remote code is involved.
+
 ### Host permission: https://chatgpt.com/*
 
 Allows the extension to run on ChatGPT pages so it can add the Temporary Chat URL parameter to new chat links and, when a new chat is not yet in Temporary Chat, turn on ChatGPT's own Temporary Chat toggle on the page.
